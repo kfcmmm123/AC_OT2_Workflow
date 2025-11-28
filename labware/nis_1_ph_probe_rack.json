@@ -1,0 +1,60 @@
+{
+    "ordering": [
+        [
+            "A1"
+        ]
+    ],
+    "brand": {
+        "brand": "Nis",
+        "brandId": [
+            "tool",
+            "ph_probe"
+        ]
+    },
+    "metadata": {
+        "displayName": "Nis ph probe rack",
+        "displayCategory": "tipRack",
+        "displayVolumeUnits": "µL",
+        "tags": []
+    },
+    "dimensions": {
+        "xDimension": 127.75,
+        "yDimension": 85.5,
+        "zDimension": 117
+    },
+    "wells": {
+        "A1": {
+            "depth": 94,
+            "totalLiquidVolume": 1,
+            "shape": "circular",
+            "diameter": 8,
+            "x": 64,
+            "y": 43.5,
+            "z": 26
+        }
+    },
+    "groups": [
+        {
+            "metadata": {},
+            "wells": [
+                "A1"
+            ]
+        }
+    ],
+    "parameters": {
+        "format": "irregular",
+        "quirks": [],
+        "tipLength": 94,
+        "isMagneticModuleCompatible": false,
+        "loadName": "nis_1_ph_probe_rack",
+        "isTiprack": true
+    },
+    "namespace": "custom_beta",
+    "version": 1,
+    "schemaVersion": 2,
+    "cornerOffsetFromSlot": {
+        "x": 0,
+        "y": 0,
+        "z": 0
+    }
+}

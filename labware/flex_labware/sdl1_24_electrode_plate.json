@@ -1,0 +1,50 @@
+{
+    "namespace": "sdl1",
+    "version": 1,
+    "schemaVersion": 2,
+    "parameters": {
+      "loadName": "sdl1_24_electrode_plate",
+      "format": "96Standard",
+      "isTiprack": false,
+      "isMagneticModuleCompatible": true
+    },
+    "metadata": {
+      "displayName": "Sdl1 24 Electrode Plate",
+      "displayCategory": "wellPlate",
+      "displayVolumeUnits": "µL",
+      "tags": []
+    },
+    "brand": {
+      "brand": "sdl1",
+      "brandId": [],
+      "links": [
+      ]
+    },
+    "dimensions": {
+      "xDimension": 127.75,
+      "yDimension": 85.75,
+      "zDimension": 23.0
+    },
+    "cornerOffsetFromSlot": {
+      "x": 0,
+      "y": 0,
+      "z": 0
+    },
+    "stackingOffsetWithLabware": {
+      "sdl1_24_electrode_plate_holder": {
+        "x": 0,
+        "y": 0,
+        "z": 0
+      },
+      "sdl1_24_wellplate_2664ul": {
+        "x": 0,
+        "y": 0,
+        "z": 0
+      }
+    },
+    "gripForce": 15,
+    "gripHeightFromLabwareBottom": 12,
+    "ordering": [],
+    "wells": {},
+    "groups": []
+  }

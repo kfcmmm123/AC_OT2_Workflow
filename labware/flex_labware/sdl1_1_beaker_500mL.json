@@ -1,0 +1,63 @@
+{
+    "ordering": [
+        [
+            "A1"
+        ]
+    ],
+    "brand": {
+        "brand": "SDL1",
+        "brandId": [
+            "500mLBeaker"
+        ]
+    },
+    "metadata": {
+        "displayName": "SDL1 1 Reservoir 500000 µL",
+        "displayCategory": "reservoir",
+        "displayVolumeUnits": "µL",
+        "tags": []
+    },
+    "dimensions": {
+        "xDimension": 127,
+        "yDimension": 85,
+        "zDimension": 135
+    },
+    "wells": {
+        "A1": {
+            "depth": 125,
+            "totalLiquidVolume": 500000,
+            "shape": "circular",
+            "diameter": 83,
+            "x": 45,
+            "y": 40,
+            "z": 10
+        }
+    },
+    "groups": [
+        {
+            "metadata": {
+                "wellBottomShape": "flat"
+            },
+            "wells": [
+                "A1"
+            ]
+        }
+    ],
+    "parameters": {
+        "format": "irregular",
+        "quirks": [
+            "centerMultichannelOnWells",
+            "touchTipDisabled"
+        ],
+        "isTiprack": false,
+        "isMagneticModuleCompatible": false,
+        "loadName": "sdl1_1_beaker_500ml"
+    },
+    "namespace": "custom_beta",
+    "version": 1,
+    "schemaVersion": 2,
+    "cornerOffsetFromSlot": {
+        "x": 0,
+        "y": 0,
+        "z": 0
+    }
+}

@@ -1,0 +1,86 @@
+{
+    "ordering": [
+        [
+            "A1"
+        ],
+        [
+            "A2"
+        ],
+        [
+            "A3"
+        ]
+    ],
+    "brand": {
+        "brand": "SDL1",
+        "brandId": [
+            "tool",
+            "electrode"
+        ]
+    },
+    "metadata": {
+        "displayName": "SDL1 3 Tip Rack 1 µL",
+        "displayCategory": "tipRack",
+        "displayVolumeUnits": "µL",
+        "tags": []
+    },
+    "dimensions": {
+        "xDimension": 127,
+        "yDimension": 85,
+        "zDimension": 118
+    },
+    "wells": {
+        "A1": {
+            "depth": 89.35,
+            "totalLiquidVolume": 50,
+            "shape": "circular",
+            "diameter": 5.4,
+            "x": 21,
+            "y": 42.5,
+            "z": 28.65
+        },
+        "A2": {
+            "depth": 89.35,
+            "totalLiquidVolume": 50,
+            "shape": "circular",
+            "diameter": 5.4,
+            "x": 64,
+            "y": 42.5,
+            "z": 28.65
+        },
+        "A3": {
+            "depth": 89.35,
+            "totalLiquidVolume": 50,
+            "shape": "circular",
+            "diameter": 5.4,
+            "x": 107,
+            "y": 42.5,
+            "z": 28.65
+        }
+    },
+    "groups": [
+        {
+            "metadata": {},
+            "wells": [
+                "A1",
+                "A2",
+                "A3"
+            ]
+        }
+    ],
+    "parameters": {
+        "format": "irregular",
+        "quirks": [],
+        "isTiprack": true,
+        "tipLength": 89.35,
+        "isMagneticModuleCompatible": false,
+        "loadName": "sdl1_3_tiprack_1ul"
+    },
+    "namespace": "custom_beta",
+    "version": 1,
+    "schemaVersion": 2,
+    "cornerOffsetFromSlot": {
+        "x": 0,
+        "y": 0,
+        "z": 0
+    }
+}

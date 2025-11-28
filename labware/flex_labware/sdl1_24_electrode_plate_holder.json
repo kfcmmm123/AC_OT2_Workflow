@@ -1,0 +1,41 @@
+{
+    "ordering": [],
+    "brand": {
+      "brand": "sdl1",
+      "brandId": []
+    },
+    "metadata": {
+      "displayName": "Sdl1 24 Electrode Plate Holder",
+      "displayCategory": "aluminumBlock",
+      "displayVolumeUnits": "µL",
+      "tags": []
+    },
+    "dimensions": {
+      "xDimension": 127.75,
+      "yDimension": 85.75,
+      "zDimension": 35.2
+    },
+    "wells": {},
+    "groups": [
+      {
+        "metadata": {},
+        "wells": []
+      }
+    ],
+    "parameters": {
+      "format": "96Standard",
+      "quirks": [],
+      "isTiprack": false,
+      "isMagneticModuleCompatible": false,
+      "loadName": "sdl1_24_electrode_plate_holder"
+    },
+    "namespace": "sdl1",
+    "version": 1,
+    "schemaVersion": 2,
+    "allowedRoles": ["adapter"],
+    "cornerOffsetFromSlot": {
+      "x": 0.95,
+      "y": 0,
+      "z": 0
+    }
+  }
