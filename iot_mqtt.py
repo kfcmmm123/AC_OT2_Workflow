@@ -4,6 +4,7 @@
 # - Ultrasonic drivers (SparkFun Qwiic Relays)
 # - Heaters (SparkFun Dual SSR)
 # - Biologic ports (I2C MCP23017)
+# - Reactor + Furnace (SparkFun Qwiic Quad Relay)
 #
 # Requires: paho-mqtt>=1.6 (v2 callback API)
 
@@ -18,13 +19,10 @@ import subprocess
 import threading
 import time
 import random
-import logging
 from datetime import datetime
 from typing import Callable, Final, Iterable, Optional
 
 from paho.mqtt import client as mqtt
-
-LOGGER = logging.getLogger(__name__)
 
 # -----------------------------------------------------------------------------
 # Global device counts (single source of truth for loops / safety shutdowns)
@@ -39,7 +37,7 @@ BIO_COUNT: Final[int] = 16
 # -----------------------------------------------------------------------------
 def _make_unique_client_id(base: str) -> str:
     """
-    Generate a unique client ID by appending hostname and PID.
+    Generate a unique client ID by appending the current date and time with a random number.
     Prevents MQTT client ID conflicts when multiple instances run.
     """
     ts = time.strftime("%m%d_%H%M")
@@ -188,31 +186,31 @@ class ControllerBeacon:
 
         def _on_connect(client: mqtt.Client, _userdata, _flags, reason_code, _props=None) -> None:
             if reason_code == 0:
-                LOGGER.info(f"[ctl] Connected -> {self.broker}:{self.port} (client_id={self.client_id})")
+                print(f"[ctl] Connected -> {self.broker}:{self.port} (client_id={self.client_id})")
                 client.publish(self.status_topic, "ONLINE", qos=1, retain=True)
             else:
                 # MQTT v5 connect reason codes
                 reason_msg = _get_disconnect_reason_message(reason_code)  # Same mapping works for connect
-                LOGGER.error(f"[ctl] Connect failed: {reason_msg} (0x{reason_code:02X})")
+                print(f"[ctl] Connect failed: {reason_msg} (0x{reason_code:02X})")
                 # Additional context from properties if available
                 if _props and hasattr(_props, 'ReasonString') and _props.ReasonString:
-                    LOGGER.info(f"[ctl] Server message: {_props.ReasonString}")
+                    print(f"[ctl] Server message: {_props.ReasonString}")
 
         def _on_disconnect(client: mqtt.Client, _userdata,  disconnect_flags=None, reason_code: int | None = None, properties: Optional[mqtt.Properties] = None) -> None:
             if reason_code == 0:
-                LOGGER.info(f"[ctl] Disconnected normally")
+                print(f"[ctl] Disconnected normally")
             else:
                 disconnect_info = _format_disconnect_info(reason_code, properties)
-                LOGGER.error(f"[ctl] Disconnected unexpectedly: {disconnect_info}")
+                print(f"[ctl] Disconnected unexpectedly: {disconnect_info}")
                 # Log additional diagnostics for common issues
                 if reason_code == 0x92:  # Session taken over
-                    LOGGER.warning(f"[ctl] WARNING: Another client with same ID connected. Client ID: {self.client_id}")
+                    print(f"[ctl] WARNING: Another client with same ID connected. Client ID: {self.client_id}")
                 elif reason_code == 0x87:  # Bad User Name or Password
-                    LOGGER.warning(f"[ctl] WARNING: Check MQTT credentials (username/password)")
+                    print(f"[ctl] WARNING: Check MQTT credentials (username/password)")
                 elif reason_code == 0x88:  # Not authorized
-                    LOGGER.warning(f"[ctl] WARNING: Check ACL permissions for user")
+                    print(f"[ctl] WARNING: Check ACL permissions for user")
                 elif reason_code == 0x91:  # Keep Alive timeout
-                    LOGGER.warning(f"[ctl] WARNING: Network connectivity issue or broker overload")
+                    print(f"[ctl] WARNING: Network connectivity issue or broker overload")
 
         c.on_connect = _on_connect
         c.on_disconnect = _on_disconnect
@@ -271,7 +269,7 @@ class ControllerBeacon:
     def stop(self) -> None:
         if self._client is None:
             return
-        LOGGER.info("[ctl] Stopping controller beacon (OFFLINE)...")
+        print("[ctl] Stopping controller beacon (OFFLINE)...")
         try:
             self._client.publish(self.status_topic, "OFFLINE", qos=1, retain=True)
         except Exception:
@@ -324,7 +322,7 @@ def start_broker_if_needed(
     Returns a subprocess handle or None if already listening.
     """
     if _is_port_open("127.0.0.1", port):
-        LOGGER.info(f"[broker] Already listening on port {port}")
+        print(f"[broker] Already listening on port {port}")
         return None
 
     if not (os.path.exists(mosq_exe) or shutil.which(mosq_exe)):
@@ -339,13 +337,13 @@ def start_broker_if_needed(
         log_base = os.path.join(os.path.expanduser("~"), "mosquitto-logs")
         os.makedirs(log_base, exist_ok=True)
         log_path = os.path.join(log_base, "mosq-python.log")
-        LOGGER.warning(f"[broker] No write access to default path; using {log_path}")
+        print(f"[broker] No write access to default path; using {log_path}")
 
-    LOGGER.info(f"[broker] Logging to: {log_path}")
+    print(f"[broker] Logging to: {log_path}")
     logf = open(log_path, "a", buffering=1, encoding="utf-8")
 
     # --- Start broker ------------------------------------------------------
-    LOGGER.info("[broker] Starting Mosquitto (-v for logs)...")
+    print("[broker] Starting Mosquitto (-v for logs)...")
     proc = subprocess.Popen(
         [mosq_exe, "-v", "-c", mosq_conf],
         stdout=subprocess.PIPE,
@@ -371,24 +369,24 @@ def start_broker_if_needed(
         raise RuntimeError(f"Broker failed to open port {port}")
 
     proc._log_handle = logf  # type: ignore[attr-defined]
-    LOGGER.info("[broker] Broker is ready.")
+    print("[broker] Broker is ready.")
     return proc
 
 
 def stop_broker(proc: Optional[subprocess.Popen]) -> None:
     """Gracefully stop Mosquitto broker if we started it."""
     if proc and proc.poll() is None:
-        LOGGER.info("[broker] Stopping Mosquitto...")
+        print("[broker] Stopping Mosquitto...")
         proc.terminate()
         try:
             proc.wait(timeout=3)
         except subprocess.TimeoutExpired:
-            LOGGER.warning("[broker] Mosquitto did not terminate in time; killing it.")
+            print("[broker] Mosquitto did not terminate in time; killing it.")
             proc.kill()
 
         timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         msg = f"[{timestamp}] [broker] Mosquitto stopped.\n"
-        LOGGER.info(msg.strip())
+        print(msg.strip())
 
         if hasattr(proc, "_log_handle") and proc._log_handle:  # type: ignore[attr-defined]
             try:
@@ -411,6 +409,7 @@ def _best_effort_all_off(
     heat: Optional["HeatMQTT"] = None,
     ph:    Optional["PhMQTT"]    = None,
     bio:   Optional["BioMQTT"]   = None,
+    reactor: Optional["ReactorMQTT"] = None,
 ) -> None:
     """
     Try to turn every output OFF on clean shutdown (best-effort).
@@ -451,12 +450,18 @@ def _best_effort_all_off(
             except Exception:
                 pass
         if bio:
-            for ch in range(1, BIO_COUNT + 1):
+            for ch in range(1, BIO_COUNT + 1):  
                 try:
                     bio.off(ch)
                     time.sleep(0.02)
                 except Exception:
                     pass
+        if reactor:
+            try:
+                reactor.reset()  # reset to safe state (Reactor OPEN, Furnace CLOSED)
+                time.sleep(0.05)
+            except Exception:
+                pass
     except Exception:
         pass
 
@@ -523,36 +528,36 @@ class _BaseDevice:
 
         def _on_connect(client: mqtt.Client, _userdata, _flags, reason_code, _props=None) -> None:
             if reason_code == 0:
-                LOGGER.info(f"[{self.client_id}] Connected to {self.broker}:{self.port}")
+                print(f"[{self.client_id}] Connected to {self.broker}:{self.port}")
             else:
                 # MQTT v5 connect reason codes
                 reason_msg = _get_disconnect_reason_message(reason_code)  # Same mapping works for connect
-                LOGGER.warning(f"[{self.client_id}] Connection failed: {reason_msg} (0x{reason_code:02X})")
+                print(f"[{self.client_id}] Connection failed: {reason_msg} (0x{reason_code:02X})")
                 # Additional context from properties if available
                 if _props and hasattr(_props, 'ReasonString') and _props.ReasonString:
-                    LOGGER.info(f"[{self.client_id}] Server message: {_props.ReasonString}")
+                    print(f"[{self.client_id}] Server message: {_props.ReasonString}")
 
         def _on_disconnect(client: mqtt.Client, _userdata, disconnect_flags=None, reason_code: int | None = None, properties: Optional[mqtt.Properties] = None) -> None:
             if reason_code == 0:
-                LOGGER.info(f"[{self.client_id}] Disconnected normally")
+                print(f"[{self.client_id}] Disconnected normally")
             else:
                 disconnect_info = _format_disconnect_info(reason_code, properties)
-                LOGGER.warning(f"[{self.client_id}] Disconnected unexpectedly: {disconnect_info}")
+                print(f"[{self.client_id}] Disconnected unexpectedly: {disconnect_info}")
                 # Log additional diagnostics for common issues
                 if reason_code == 0x92:  # Session taken over
-                    LOGGER.warning(f"[{self.client_id}] WARNING: Another client with same ID connected")
+                    print(f"[{self.client_id}] WARNING: Another client with same ID connected")
                 elif reason_code == 0x87:  # Bad User Name or Password
-                    LOGGER.warning(f"[{self.client_id}] WARNING: Check MQTT credentials (username/password)")
+                    print(f"[{self.client_id}] WARNING: Check MQTT credentials (username/password)")
                 elif reason_code == 0x88:  # Not authorized
-                    LOGGER.warning(f"[{self.client_id}] WARNING: Check ACL permissions for user")
+                    print(f"[{self.client_id}] WARNING: Check ACL permissions for user")
                 elif reason_code == 0x91:  # Keep Alive timeout
-                    LOGGER.warning(f"[{self.client_id}] WARNING: Network connectivity issue or broker overload")
+                    print(f"[{self.client_id}] WARNING: Network connectivity issue or broker overload")
 
         c.on_connect = _on_connect
         c.on_disconnect = _on_disconnect
 
         for attempt in range(max(1, retries)):
-            LOGGER.info(f"[{self.client_id}] Connecting to {self.broker}:{self.port} (attempt {attempt + 1})...")
+            print(f"[{self.client_id}] Connecting to {self.broker}:{self.port} (attempt {attempt + 1})...")
             try:
                 c.connect(self.broker, self.port, keepalive=self.keepalive, properties=connect_properties)
                 self._client = c
@@ -560,7 +565,7 @@ class _BaseDevice:
             except OSError:
                 if attempt == retries - 1:
                     raise
-                LOGGER.warning(f"[{self.client_id}] Connection failed; retrying in {delay} seconds...")
+                print(f"[{self.client_id}] Connection failed; retrying in {delay} seconds...")
                 time.sleep(delay)
 
     def start(self, retries: int = 5, delay: float = 0.6) -> None:
@@ -599,7 +604,7 @@ class _BaseDevice:
         full = f"{self.base}/{topic_suffix}".replace("//", "/")
         c.publish(full, payload, qos=qos, retain=retain)
         if self.print_publish:
-            LOGGER.info(f"[{self.client_id}] Published '{payload}' to {full}")
+            print(f"[{self.client_id}] Published '{payload}' to {full}")
 
     # Monitoring utilities
     def status(self, topics: Optional[Iterable[str]] = None, seconds: float = 3.0) -> None:
@@ -614,9 +619,9 @@ class _BaseDevice:
 
         def _on_msg(_client: mqtt.Client, _userdata, msg: mqtt.MQTTMessage) -> None:
             try:
-                LOGGER.info(f"[{self.client_id}] Received message on {msg.topic}: {msg.payload.decode('utf-8', errors='ignore')}")
+                print(f"{msg.topic} {msg.payload.decode('utf-8', errors='ignore')}")
             except Exception:
-                LOGGER.error(f"[{self.client_id}] Error decoding message on {msg.topic}: <{len(msg.payload)} bytes>")
+                print(f"{msg.topic} <{len(msg.payload)} bytes>")
 
         old = c.on_message
         c.on_message = _on_msg
@@ -640,9 +645,9 @@ class _BaseDevice:
 
         def _default_cb(topic: str, payload: bytes) -> None:
             try:
-                LOGGER.info(f"[{self.client_id}] {topic} {payload.decode('utf-8', errors='ignore')}")
+                print(f"{topic} {payload.decode('utf-8', errors='ignore')}")
             except Exception:
-                LOGGER.error(f"[{self.client_id}] {topic} <{len(payload)} bytes>")
+                print(f"{topic} <{len(payload)} bytes>")
 
         cb = on_message or _default_cb
 
@@ -661,12 +666,12 @@ class _BaseDevice:
                 c.unsubscribe(f"{self.base}/#")
 
         if self._watch_thread and self._watch_thread.is_alive():
-            LOGGER.warning(f"[watch] {self.base}/# already running")
+            print("[watch] already running")
             return
 
         self._watch_thread = threading.Thread(target=_run, daemon=True)
         self._watch_thread.start()
-        LOGGER.info(f"[watch] {self.base}/# (call .watch_stop() to stop)")
+        print(f"[watch] {self.base}/# (call .watch_stop() to stop)")
 
     def watch_stop(self) -> None:
         """Stop the background watch thread if running."""
@@ -993,11 +998,11 @@ class PhMQTT(_BaseDevice):
         data: list[tuple[float, str]] = []
 
         def _on_msg(_client, _userdata, msg):
-            ts = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+            ts = time.time()
             payload_txt = msg.payload.decode("utf-8", errors="ignore")
 
             if print_live:
-                LOGGER.info(f"{msg.topic} {payload_txt}")
+                print(f"{msg.topic} {payload_txt}")
 
             # Only log pH readings, not random replies / safety notes
             if msg.topic == topic_ph and collect:
@@ -1044,6 +1049,84 @@ class BioMQTT(_BaseDevice):
         """Subscribe temporarily to status/heartbeat or custom topics and print messages."""
         topics = [f"{self.base}/status", f"{self.base}/heartbeat"] + [
             f"{self.base}/state/{i}" for i in range(1, BIO_COUNT + 1)
+        ]
+        super().status(topics, seconds)
+
+
+class ReactorMQTT(_BaseDevice):
+    """Controls reactor and furnace via SparkFun Qwiic Quad Relay."""
+    
+    def reactor_open(self) -> None:
+        """Open the reactor valve."""
+        self._publish("cmd/Reactor", "OPEN", retain=False)
+    
+    def reactor_close(self) -> None:
+        """Close the reactor valve."""
+        self._publish("cmd/Reactor", "CLOSE", retain=False)
+    
+    def furnace_open(self) -> None:
+        """Open the furnace valve."""
+        self._publish("cmd/Furnace", "OPEN", retain=False)
+    
+    def furnace_close(self) -> None:
+        """Close the furnace valve."""
+        self._publish("cmd/Furnace", "CLOSE", retain=False)
+    
+    def reset(self) -> None:
+        """Reset to safe state: Reactor CLOSED, Furnace CLOSED."""
+        self._publish("cmd", "RESET", retain=False)
+    
+    def get_state(self, which: str, timeout_s: float = 1.5) -> str:
+        """
+        Read the current state of reactor or furnace.
+        
+        Args:
+            which: "Reactor" or "Furnace"
+            timeout_s: Maximum time to wait for state message
+        
+        Returns:
+            State string: "Open" or "Closed"
+        
+        Raises:
+            TimeoutError: If no state message received within timeout
+        """
+        if which not in ("Reactor", "Furnace"):
+            raise ValueError("which must be 'Reactor' or 'Furnace'")
+        
+        c = self._require()
+        if not getattr(self, "_loop_running", False):
+            raise RuntimeError("get_state() requires the background loop. Call start() first.")
+        
+        topic = f"{self.base}/state/{which}"
+        result: dict[str, Optional[str]] = {"val": None}
+        
+        def _cb(_c, _u, msg: mqtt.MQTTMessage) -> None:
+            try:
+                result["val"] = msg.payload.decode("utf-8", errors="ignore").strip()
+            except Exception:
+                pass
+        
+        c.message_callback_add(topic, _cb)
+        try:
+            c.subscribe(topic, qos=0)
+            t0 = time.time()
+            while result["val"] is None and (time.time() - t0) < timeout_s:
+                time.sleep(0.02)
+        finally:
+            c.message_callback_remove(topic)
+            c.unsubscribe(topic)
+        
+        if result["val"] is None:
+            raise TimeoutError(f"No state reading on {topic} within {timeout_s:.1f}s")
+        return result["val"]
+    
+    def status(self, seconds: float = 3.0) -> None:
+        """Subscribe temporarily to status/heartbeat or custom topics and print messages."""
+        topics = [
+            f"{self.base}/status",
+            f"{self.base}/heartbeat",
+            f"{self.base}/state/Reactor",
+            f"{self.base}/state/Furnace",
         ]
         super().status(topics, seconds)
 
@@ -1105,12 +1188,20 @@ if __name__ == "__main__":
         base_topic="bio/01",
         client_id="pyctl-bio",
     )
+    reactor = ReactorMQTT(
+        broker=broker,
+        username="react1",
+        password="react",
+        base_topic="react/01",
+        client_id="pyctl-reactor",
+    )
 
     pumps.start()
     ultra.start()
     heat.start()
     ph.start()
     bio.start()
+    reactor.start()
 
     try:
         # --------- Pumps demo ---------
@@ -1130,9 +1221,9 @@ if __name__ == "__main__":
         heat.pid_on(1)
         try:
             t = heat.get_base_temp(1, timeout_s=5.0)
-            LOGGER.info("Temp(ch1) =", t)
+            print("Temp(ch1) =", t)
         except TimeoutError as e:
-            LOGGER.error("Temp read timeout:", e)
+            print("Temp read timeout:", e)
         time.sleep(3)
         heat.pid_off(1)
         heat.set_pwm(1, 0)
@@ -1157,15 +1248,29 @@ if __name__ == "__main__":
         # turn off biologic channel 1
         bio.off(1)
 
+        # --------- Reactor demo ---------
+        # Open reactor
+        reactor.reactor_open()
+        time.sleep(11)  # Wait for pulse to complete
+        
+        # Open furnace
+        reactor.furnace_open()
+        time.sleep(7)  # Wait for pulse to complete
+        
+        # Reset to safe state (Reactor OPEN, Furnace CLOSED)
+        reactor.reset()
+        time.sleep(11)
+
     finally:
         # Best-effort tidy OFF on graceful exit
-        _best_effort_all_off(pumps, ultra, heat, ph)
+        _best_effort_all_off(pumps, ultra, heat, ph, bio,reactor)
 
         pumps.disconnect()
         ultra.disconnect()
         heat.disconnect()
         ph.disconnect()
         bio.disconnect()
+        reactor.disconnect()
 
         beacon.stop()
         stop_broker(proc)
